@@ -22,7 +22,7 @@ ext {
 ext.repoUrl = snapshotUrl
 
 ext."signing.keyId" = 'FDEB5A45'
-ext."signing.secretKeyRingFile" = '/Users/mtamayorios/.gnupg/secring.gpg'
+ext."signing.secretKeyRingFile" = '/Users/mtamayo/.gnupg/secring.gpg'
 ext."signing.password" = 'id'
 
 signing {
