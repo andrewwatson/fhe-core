@@ -1,14 +1,21 @@
 package com.kryptnostic.crypto.fhe;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import sun.java2d.pipe.SpanShapeRenderer.Simple;
+
+import com.google.common.collect.ImmutableList;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
+import com.kryptnostic.multivariate.CompoundPolynomialFunctionGF2;
+import com.kryptnostic.multivariate.FunctionUtils;
 import com.kryptnostic.multivariate.PolynomialFunctionGF2;
+import com.kryptnostic.multivariate.PolynomialFunctionJoiner;
 import com.kryptnostic.multivariate.PolynomialFunctions;
 import com.kryptnostic.multivariate.gf2.Monomial;
 import com.kryptnostic.multivariate.gf2.PolynomialFunction;
@@ -102,40 +109,38 @@ public class HomomorphicFunctions {
         
         SimplePolynomialFunction DX = D.multiply( X );
         SimplePolynomialFunction DY = D.multiply( Y );
-        SimplePolynomialFunction DXplusY = D.multiply( X.xor( Y ) );
+        SimplePolynomialFunction DXplusY = FunctionUtils.extendInputsWithoutEffects( D.multiply( X.xor( Y ) ) , ciphertextLength << 1);
         
         SimplePolynomialFunction F = privateKey.getF();
-        SimplePolynomialFunction FofDX = F.compose( DX );
+        SimplePolynomialFunction FofDX = FunctionUtils.extendInputsWithoutEffects( F.compose( DX ) , ciphertextLength << 1);
         SimplePolynomialFunction FofDXplusY = F.compose( DXplusY );
         
-        EnhancedBitMatrix R = EnhancedBitMatrix.randomInvertibleMatrix( E1.rows() );
+        EnhancedBitMatrix R = EnhancedBitMatrix.randomInvertibleMatrix( E1.cols() );
         SimplePolynomialFunction R1 = PolynomialFunctions.randomFunction( ciphertextLength << 1,  plaintextLength ) ,
                                  R2 = PolynomialFunctions.randomFunction( ciphertextLength << 1,  plaintextLength );
-        SimplePolynomialFunction R1ofXY = R1.compose(X, Y);
-        SimplePolynomialFunction R2ofXY = R2.compose(X, Y);
         
-        SimplePolynomialFunction Lx = L.multiply( X );
-        SimplePolynomialFunction Ly = L.multiply( Y );
-        
+        SimplePolynomialFunction Lx = FunctionUtils.extendInputsWithoutEffects( L.multiply( X ) , ciphertextLength << 1 );
+        SimplePolynomialFunction Ly = FunctionUtils.extendInputsWithoutEffects( L.multiply( Y ) , ciphertextLength << 1 ) ;
+               
         SimplePolynomialFunction V1 = 
                 E1
-                    .multiply( Lx.xor( R1ofXY ) )
-                    .xor( E2.multiply( DXplusY.xor( R1ofXY ) ) );
+                    .multiply( Lx.xor( R1 ) )
+                    .xor( E2.multiply( DXplusY.xor( R1 ) ) );
         
         SimplePolynomialFunction V2 = 
                 E1
-                    .multiply( Ly.xor( R2ofXY ) )
-                    .xor( E2.multiply( DXplusY.xor( R2ofXY ) ) );        
+                    .multiply( Ly.xor( R2 ) )
+                    .xor( E2.multiply( DXplusY.xor( R2 ) ) );        
         
         SimplePolynomialFunction V3 = 
                 E1
-                    .multiply( R.multiply( FofDX.xor( R1ofXY ) ) )
-                    .xor( E2.multiply( DXplusY.xor( R1ofXY ) ) );
+                    .multiply( R.multiply( FofDX.xor( R1 ) ) )
+                    .xor( E2.multiply( DXplusY.xor( R1 ) ) );
         
         SimplePolynomialFunction V4 = 
                 E1
-                .multiply( R.multiply( FofDX.xor( R2ofXY ) ) )
-                .xor( E2.multiply( DXplusY.xor( R2ofXY ) ) );
+                .multiply( R.multiply( FofDX.xor( R2 ) ) )
+                .xor( E2.multiply( DXplusY.xor( R2 ) ) );
         
         
         SimplePolynomialFunction PLL =
@@ -156,17 +161,18 @@ public class HomomorphicFunctions {
 	                .xor( E2.multiply( DXplusY ) );
         logger.info("Generated functions for producting.");
         
-        SimplePolynomialFunction xor = PolynomialFunctions.XOR( ciphertextLength );
-        SimplePolynomialFunction homomorphicXor = privateKey.computeHomomorphicFunction( xor );
+        SimplePolynomialFunction homomorphicXor = BinaryHomomorphicXor(plaintextLength, privateKey);
         
-        SimplePolynomialFunction PLLv1v2 = PLL.compose(V1, V2);
-        SimplePolynomialFunction PRLv3v2 = PRL.compose(V3, V2);
-        SimplePolynomialFunction PLRv1v4 = PLR.compose(V1, V4);
-        SimplePolynomialFunction PRRv3v4 = PRR.compose(V3, V4);
+        PolynomialFunction PLLv1v2 = new PolynomialFunctionJoiner(V1, PLL, V2);
+        PolynomialFunction PRLv3v2 = new PolynomialFunctionJoiner(V3, PRL, V2);
+        PolynomialFunction PLRv1v4 = new PolynomialFunctionJoiner(V1, PLR, V4);
+        PolynomialFunction PRRv3v4 = new PolynomialFunctionJoiner(V3, PRR, V4);
         logger.info("Generated product parts.");
         
-        return homomorphicXor.compose( 
-        		homomorphicXor.compose( PLLv1v2, PRLv3v2 ), 
-        		homomorphicXor.compose( PLRv1v4, PRRv3v4 ) );
+        return
+                new PolynomialFunctionJoiner(
+                    new PolynomialFunctionJoiner(PLLv1v2, homomorphicXor, PRLv3v2),
+                    homomorphicXor,
+                    new PolynomialFunctionJoiner(PLRv1v4, homomorphicXor, PRRv3v4));
     }
 }

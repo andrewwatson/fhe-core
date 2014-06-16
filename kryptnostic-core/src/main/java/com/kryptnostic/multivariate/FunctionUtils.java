@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Maps;
 import com.kryptnostic.multivariate.gf2.Monomial;
@@ -121,5 +122,19 @@ public class FunctionUtils {
         }
         
         return new PolynomialFunctionGF2( combinedInputLength , combinedOutputLength , monomials , contributions );
+    }
+    
+    public static SimplePolynomialFunction extendInputsWithoutEffects(  SimplePolynomialFunction f , int newsize ) {
+        Preconditions.checkArgument( newsize > f.getInputLength() , "Cannot shorten inputs without effects.");
+            
+        Monomial[] monomials = f.getMonomials();
+        BitVector[] contributions = f.getContributions();
+        Monomial[] newMonomials = new Monomial[ monomials.length ];
+        
+        for( int i=0; i<monomials.length;++i ) {
+            newMonomials[ i ] = monomials[i].extend( newsize );
+        }
+        
+        return PolynomialFunctionGF2.fromMonomialContributionMap(newsize, f.getOutputLength(), PolynomialFunctionGF2.mapCopyFromMonomialsAndContributions(newMonomials, contributions) );
     }
 }

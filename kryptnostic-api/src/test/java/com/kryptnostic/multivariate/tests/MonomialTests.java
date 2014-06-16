@@ -74,5 +74,21 @@ public class MonomialTests {
         Assert.assertEquals( m , m2 );
     }
     
+    @Test
+    public void testExtend() {
+        int initialSize = 63;
+        int extendedSize = 103;
+        Monomial m = new Monomial ( initialSize );
+        Monomial extended = m.extend( extendedSize );
+        
+        for( int i = 0 ; i < extendedSize ; ++i ) {
+            if( i < initialSize ) {
+                Assert.assertEquals(m.get(i),extended.get(i));
+            } else {
+                Assert.assertEquals(false,extended.get(i));
+            }
+        }
+        
+    }
     
 }

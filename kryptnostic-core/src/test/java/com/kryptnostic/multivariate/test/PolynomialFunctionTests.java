@@ -193,5 +193,19 @@ public class PolynomialFunctionTests {
        SimplePolynomialFunction fPrime = FunctionUtils.fromString( 256 , fString );
        Assert.assertEquals( f , fPrime );
    }
+   
+   @Test
+   public void testExtend() {
+       SimplePolynomialFunction f = PolynomialFunctions.randomFunction(128, 256);
+       
+       SimplePolynomialFunction g = FunctionUtils.extendInputsWithoutEffects(f, 256);
+       
+       BitVector input = BitUtils.randomVector( 128 );
+       BitVector extendedInput = BitUtils.randomVector( 256 );
+       input.elements()[0] = extendedInput.elements()[0];
+       input.elements()[1] = extendedInput.elements()[1];
+       
+       Assert.assertEquals( f.apply(input) , g.apply( extendedInput ) ) ;
+   }
 
 }

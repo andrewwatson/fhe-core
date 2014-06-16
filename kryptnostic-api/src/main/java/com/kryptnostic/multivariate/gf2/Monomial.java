@@ -57,6 +57,15 @@ public class Monomial extends BitVector {
         }
     }
     
+    public Monomial extend( int newsize ) {
+        Preconditions.checkArgument( newsize > size() , "New size of monomial must be greater than old size in order to extend it.");
+        Monomial extended = new Monomial( newsize );
+        for( int i = 0 ; i < bits.length ; ++i ) {
+            extended.bits[ i ] |= bits[i];
+        }
+        return extended;
+    }
+    
     public Monomial product( Monomial monomial ) {
         Preconditions.checkArgument( this.size() == monomial.size() , "Cannot compute product due to polynomial ring mismatch.");
         Monomial result = clone();
